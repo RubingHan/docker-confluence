@@ -1,4 +1,8 @@
+import java.util.Arrays;
+import java.io.IOException;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
@@ -9,7 +13,9 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 import java.util.Scanner;
 import java.util.zip.Deflater;
+import java.util.zip.DeflaterInputStream;
 import java.util.zip.DeflaterOutputStream;
+import java.util.zip.Inflater;
 
 /**
  * @author Shauway <shauway@qq.com>
@@ -24,6 +30,7 @@ public class AtlassianLicenseGenerator {
     public static final String BAMBOO_SERVER_LICENSE_DESC = "Bamboo (Server) Unlimited Remote Agents";
     public static final String CRUCIBLE_SERVER_LICENSE_DESC = "Crucible (Server)";
     public static final String FISH_EYE_SERVER_LICENSE_DESC = "FishEye (Server)";
+    public static final String CROWD_SERVER_LICENSE_DESC = "Crowd(Server)";
     static String COMMON_LICENSE_CONTENT = "Description=$$licenseDesc$$\n" +
             "ServerID=$$serverid$$\n" +
             "Organisation=$$org$$\n" +
@@ -77,11 +84,23 @@ public class AtlassianLicenseGenerator {
             "fisheye.Starter=false\n" +
             "fisheye.LicenseTypeName=COMMERCIAL\n" +
             "fisheye.NumberOfUsers=-1";
+    static String CROWD_SPECIAL_LICENSE_CONTENT = "crowd.active=true\n" +
+            "crowd.Starter=false\n" +
+            "crowd.LicenseTypeName=COMMERCIAL\n" +
+            "crowd.NumberOfUsers=-1";
 
     static String LINE_SEPARATOR = System.getProperty("line.separator");
     static Scanner scanner = new Scanner(System.in);
 
     public static void main(String[] args) throws Exception {
+        System.out.print("Select generate(0) or decode(1) license:");
+        int genOrDe = scanner.nextInt();
+        if (genOrDe == 1) {
+            System.out.print(">> Paste your license:");
+            String licenseText = scanner.next();
+            decode(licenseText);
+            return;
+        }
         StringBuffer prompt = new StringBuffer();
         prompt.append("Select license type:").append(LINE_SEPARATOR);
         prompt.append("\t11: ").append(CONFLUENCE_SERVER_LICENSE_DESC).append(LINE_SEPARATOR);
@@ -93,6 +112,7 @@ public class AtlassianLicenseGenerator {
         prompt.append("\t4: ").append(BAMBOO_SERVER_LICENSE_DESC).append(LINE_SEPARATOR);
         prompt.append("\t5: ").append(CRUCIBLE_SERVER_LICENSE_DESC).append(LINE_SEPARATOR);
         prompt.append("\t6: ").append(FISH_EYE_SERVER_LICENSE_DESC).append(LINE_SEPARATOR);
+        prompt.append("\t7: ").append(CROWD_SERVER_LICENSE_DESC).append(LINE_SEPARATOR);
         System.out.print(prompt);
         System.out.print(">> Input selected license type code: ");
         int licenseTypeCode = scanner.nextInt();
@@ -148,6 +168,11 @@ public class AtlassianLicenseGenerator {
                         .replace("$$license_expiry_date$$", "unlimited")
                         .replace("$$maintenance_expiry_date$$", "4102401599852");
                 break;
+            case 7:
+                COMMON_LICENSE_CONTENT = COMMON_LICENSE_CONTENT.replace("$$licenseDesc$$", CROWD_SERVER_LICENSE_DESC)
+                        .replace("$$license_expiry_date$$", "unlimited")
+                        .replace("$$maintenance_expiry_date$$", "4102401599852");
+                break;
             default:
                 System.out.println("Invalid license type code!");
                 System.exit(1);
@@ -183,6 +208,9 @@ public class AtlassianLicenseGenerator {
             case 6:
                 licenseContent = COMMON_LICENSE_CONTENT + FISH_SPECIAL_LICENSE_CONTENT;
                 break;
+            case 7:
+                licenseContent = COMMON_LICENSE_CONTENT + CROWD_SPECIAL_LICENSE_CONTENT;
+                break;
         }
         System.out.println();
         System.out.println("Your license content. Enjoy it!");
@@ -199,8 +227,13 @@ public class AtlassianLicenseGenerator {
     static {
         try {
             KeyFactory keyFactory = KeyFactory.getInstance("DSA");
+            /* 原作者的Key */
             publicKey = keyFactory.generatePublic(new X509EncodedKeySpec(Base64.getUrlDecoder().decode("MIIBuDCCASwGByqGSM44BAEwggEfAoGBAP1_U4EddRIpUt9KnC7s5Of2EbdSPO9EAMMeP4C2USZpRV1AIlH7WT2NWPq_xfW6MPbLm1Vs14E7gB00b_JmYLdrmVClpJ-f6AR7ECLCT7up1_63xhv4O1fnxqimFQ8E-4P208UewwI1VBNaFpEy9nXzrith1yrv8iIDGZ3RSAHHAhUAl2BQjxUjC8yykrmCouuEC_BYHPUCgYEA9-GghdabPd7LvKtcNrhXuXmUr7v6OuqC-VdMCz0HgmdRWVeOutRZT-ZxBxCBgLRJFnEj6EwoFhO3zwkyjMim4TwWeotUfI0o4KOuHiuzpnWRbqN_C_ohNWLx-2J6ASQ7zKTxvqhRkImog9_hWuWfBpKLZl6Ae1UlZAFMO_7PSSoDgYUAAoGBAOshUqTDMJgJhrrooXl9ajUjDyunW8FSX1IjOOyNRwd0TEwtzfZzzAzUsGm4bPYjIHQpe1ovONVVUpEzYJGJMxVXbbBHQYMbevdvSUdq90LLWXhgwwlXRAwqPq9S0YZP7r9uisPruk59LVj-D-L_GVacH01LlWkm74ya1CusMxDc")));
             privateKey = keyFactory.generatePrivate(new PKCS8EncodedKeySpec(Base64.getUrlDecoder().decode("MIIBTAIBADCCASwGByqGSM44BAEwggEfAoGBAP1_U4EddRIpUt9KnC7s5Of2EbdSPO9EAMMeP4C2USZpRV1AIlH7WT2NWPq_xfW6MPbLm1Vs14E7gB00b_JmYLdrmVClpJ-f6AR7ECLCT7up1_63xhv4O1fnxqimFQ8E-4P208UewwI1VBNaFpEy9nXzrith1yrv8iIDGZ3RSAHHAhUAl2BQjxUjC8yykrmCouuEC_BYHPUCgYEA9-GghdabPd7LvKtcNrhXuXmUr7v6OuqC-VdMCz0HgmdRWVeOutRZT-ZxBxCBgLRJFnEj6EwoFhO3zwkyjMim4TwWeotUfI0o4KOuHiuzpnWRbqN_C_ohNWLx-2J6ASQ7zKTxvqhRkImog9_hWuWfBpKLZl6Ae1UlZAFMO_7PSSoEFwIVAIPdS-RMIsqurIg1ONM3UjobnZiz")));
+            /* confluence5.1-crack中的key
+            publicKey = keyFactory.generatePublic(new X509EncodedKeySpec(Base64.getDecoder().decode("MIHwMIGoBgcqhkjOOAQBMIGcAkEA/KaCzo4Syrom78z3EQ5SbbB4sF7ey80etKII864WF64B81uRpH5t9jQTxeEu0ImbzRMqzVDZkVG9xD7nN1kuFwIVAJYu3cw2nLqOuyYO5rahJtk0bjjFAkBnhHGyepz0TukaScUUfbGpqvJE8FpDTWSGkx0tFCcbnjUDC3H9c9oXkGmzLik1Yw4cIGI1TQ2iCmxBblC+eUykA0MAAkBrKJN92XEUFWggagAhhhNtFVc/Nh/JTnB3xsQ5azfHq7UcFtPEq0ohc3vGZ7OGEQS7Ym08DB6B1DtD93CwaNdX")));
+            privateKey = keyFactory.generatePrivate(new PKCS8EncodedKeySpec(Base64.getDecoder().decode("MIHGAgEAMIGoBgcqhkjOOAQBMIGcAkEA/KaCzo4Syrom78z3EQ5SbbB4sF7ey80etKII864WF64B81uRpH5t9jQTxeEu0ImbzRMqzVDZkVG9xD7nN1kuFwIVAJYu3cw2nLqOuyYO5rahJtk0bjjFAkBnhHGyepz0TukaScUUfbGpqvJE8FpDTWSGkx0tFCcbnjUDC3H9c9oXkGmzLik1Yw4cIGI1TQ2iCmxBblC+eUykBBYCFBJm/ZWcfH/gZJU3FHsqy/8aD68B")));
+            */
         } catch (Exception e) {
         }
     }
@@ -233,5 +266,54 @@ public class AtlassianLicenseGenerator {
         String licenseContentBase64 = Base64.getEncoder().encodeToString(licenseContentBytes);
         String licenseContentWithVersion = licenseContentBase64 + "X02";
         return licenseContentWithVersion + Integer.toString(licenseContentBase64.length(), 31);
+    }
+
+    static void decode(String licenseText) throws Exception {
+        int len = licenseText.length();
+        String part1 = licenseText.substring(0, len-5);
+        System.out.println(part1);
+        byte[] part1bin = Base64.getDecoder().decode(part1);
+        ByteArrayInputStream bais = new ByteArrayInputStream(part1bin);
+        DataInputStream bis = new DataInputStream(bais);
+        int p2p3len = bis.readInt();
+
+        byte[] part1p3 = Arrays.copyOfRange(part1bin, 9, p2p3len - 5);
+        System.out.println("License text len" + part1p3.length);
+
+        byte[] part1p3unzip = decompress(part1p3);
+
+        String str = new String(part1p3unzip, "UTF-8");
+        System.out.println(str);
+    }
+
+    public static byte[] decompress(byte[] data) {
+        byte[] output = new byte[0];
+
+        Inflater decompresser = new Inflater();
+        decompresser.reset();
+        decompresser.setInput(data);
+
+        ByteArrayOutputStream o = new ByteArrayOutputStream(data.length);
+        try {
+            byte[] buf = new byte[1024];
+            int iter = 0;
+            while(!decompresser.finished() && iter++ < 10) {
+                int i = decompresser.inflate(buf);
+                o.write(buf, 0, i);
+            }
+            output = o.toByteArray();
+        } catch (Exception e) {
+            output = data;
+            e.printStackTrace();
+        } finally {
+            try {
+                o.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        decompresser.end();
+        return output;
     }
 }
